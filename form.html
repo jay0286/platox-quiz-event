@@ -171,7 +171,8 @@
 /* ===== 설정: 본인의 Supabase 값으로 교체 ===== */
 const SUPABASE_URL = "https://unilsdgpzqqfqlwcahkr.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVuaWxzZGdwenFxZnFsd2NhaGtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NjE4MjYsImV4cCI6MjA5NzAzNzgyNn0.wuRACxK33brHPt2wOJJyXmIkSD0p2XxX7zR_nGyuHcg";
-const SOURCE = "insta";            // 인스타그램 폼
+// 유입경로: QR URL의 ?src=insta 면 인스타, 그 외(?src=flyer 또는 없음)는 전단지
+const SOURCE = (new URLSearchParams(location.search).get("src") === "insta") ? "insta" : "flyer";
 const DEADLINE = "2026-07-31T23:59:59+09:00";  // 응모 마감 (이후 자동 차단)
 /* ============================================ */
 
