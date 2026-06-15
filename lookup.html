@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>플라토 X 초성 퀴즈 — 당첨 조회</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --red:#e84d3d; --yellow:#f5a623; --sky:#29abe2; --green:#3dae4b; --pink:#e867a8;
+    --ink:#222; --mut:#8a8f99; --line:#e7e9ee; --soft:#f4f6f9; --white:#fff;
+    --A:#29abe2; --B:#f5a623; --C:#e867a8; --err:#e84d3d; --ok:#3dae4b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--soft);color:var(--ink);
+    font-family:'Pretendard',-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+    min-height:100vh;padding:0;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:480px;margin:0 auto;background:var(--white);min-height:100vh;
+    box-shadow:0 0 40px rgba(0,0,0,.05);position:relative;overflow:hidden}
+  .topbar{height:6px;display:flex}
+  .topbar i{flex:1}
+  .topbar i:nth-child(1){background:var(--red)} .topbar i:nth-child(2){background:var(--yellow)}
+  .topbar i:nth-child(3){background:var(--sky)} .topbar i:nth-child(4){background:var(--green)}
+  .topbar i:nth-child(5){background:var(--pink)}
+  .head{padding:26px 22px 0;position:relative}
+  .logo{height:30px;margin-bottom:14px}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--mut);margin:0 0 2px}
+  h1{font-size:24px;font-weight:800;margin:6px 0 8px;letter-spacing:-.02em}
+  h1 b{color:var(--sky)}
+  .sub{color:#5d636e;font-size:14px;margin:0}
+  .sub b{color:var(--sky)}
+  .body{padding:22px}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:20px;
+    box-shadow:0 4px 20px rgba(0,0,0,.04)}
+  label{display:block;font-size:13px;font-weight:700;margin:16px 0 7px;color:#3a3f49}
+  label:first-of-type{margin-top:0}
+  label .req{color:var(--red);margin-left:3px}
+  input[type=text]{width:100%;padding:13px 14px;background:var(--soft);border:1.5px solid var(--line);
+    border-radius:11px;color:var(--ink);font-size:16px;outline:none;transition:border .15s}
+  input[type=text]:focus{border-color:var(--sky);background:#fff}
+  input::placeholder{color:#b3b8c2}
+  textarea{width:100%;padding:13px 14px;background:var(--soft);border:1.5px solid var(--line);
+    border-radius:11px;color:var(--ink);font-size:16px;outline:none;min-height:84px;resize:vertical;
+    font-family:inherit;line-height:1.5}
+  textarea:focus{border-color:var(--sky);background:#fff}
+  .notice{background:#fef8ed;border:1px solid #fae3bd;border-radius:12px;
+    padding:12px 14px;font-size:13px;color:#7a5a1e;margin-top:18px;line-height:1.55}
+  .notice b{color:#d98a12}
+  .submit{width:100%;margin-top:20px;padding:16px;background:var(--sky);color:#fff;border:none;
+    border-radius:13px;font-size:17px;font-weight:800;cursor:pointer;transition:.15s;
+    box-shadow:0 6px 16px rgba(41,171,226,.3)}
+  .submit:hover{background:#1f95c8}
+  .submit:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+  .field-err{color:var(--err);font-size:12px;margin-top:6px;display:none}
+  .result{text-align:center;padding:34px 22px 6px}
+  .result .ic{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;margin:0 auto 18px;font-size:34px}
+  .ic.win{background:rgba(61,174,75,.13)}
+  .ic.lose{background:rgba(138,143,153,.12)}
+  .ic.none{background:rgba(232,77,61,.1)}
+  .result h2{font-size:23px;margin:0 0 10px;font-weight:800}
+  .result p{color:#5d636e;font-size:14px;margin:0 auto;max-width:330px;line-height:1.6}
+  .result p b{color:var(--sky)}
+  .pill{display:inline-block;font-size:14px;font-weight:800;padding:6px 16px;border-radius:999px;margin:8px 0}
+  .pill.A{background:rgba(41,171,226,.13);color:var(--A)}
+  .pill.B{background:rgba(245,166,35,.13);color:var(--B)}
+  .pill.C{background:rgba(232,103,168,.13);color:var(--C)}
+  .ghost{margin:22px;background:transparent;border:1.5px solid var(--line);color:#6a7080;
+    padding:12px 18px;border-radius:11px;font-size:13px;cursor:pointer;width:calc(100% - 44px);font-weight:600}
+  .foot{text-align:center;color:#aeb3bd;font-size:11px;padding:20px}
+  .addr-saved{color:var(--ok);font-size:13px;margin-top:14px;font-weight:700}
+  .divider{height:1px;background:var(--line);margin:0 22px}
+  .logo-svg{height:30px}
+
+  .logo-wrap{display:flex;flex-direction:column;gap:5px;align-items:flex-start;margin-bottom:6px}
+  .logo-en{height:26px;width:auto;display:block}
+  .logo-ko{height:18px;width:auto;display:block}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="topbar"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="head">
+    <div class="logo-wrap"><svg class="logo-en" aria-label="PLATO X" role="img" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="168.7 54.4 471.9 85.7"> <path fill-rule="nonzero" fill="rgb(0%, 61.569214%, 88.627625%)" fill-opacity="1" d="M 636.625 133.609375 L 600.285156 133.609375 L 563.945312 60.929688 L 600.285156 60.929688 Z M 636.625 133.609375 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 563.945312 133.609375 L 600.285156 133.609375 L 636.625 60.929688 L 600.285156 60.929688 Z M 563.945312 133.609375 "/> <path fill-rule="nonzero" fill="rgb(92.941284%, 43.136597%, 27.842712%)" fill-opacity="1" d="M 208.144531 132.675781 L 172.738281 132.675781 L 172.738281 61.867188 L 208.144531 61.867188 Z M 208.144531 132.675781 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 208.144531 61.867188 C 224.765625 61.867188 238.238281 75.339844 238.238281 91.960938 C 238.238281 108.582031 224.765625 122.050781 208.144531 122.050781 Z M 208.144531 61.867188 "/> <path fill-rule="nonzero" fill="rgb(98.039246%, 75.294495%, 8.627319%)" fill-opacity="1" d="M 279.308594 132.675781 L 243.902344 132.675781 L 243.902344 61.867188 L 279.308594 61.867188 Z M 279.308594 132.675781 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 309.402344 132.675781 L 279.308594 132.675781 L 279.308594 102.578125 L 309.402344 102.578125 Z M 309.402344 132.675781 "/> <path fill-rule="nonzero" fill="rgb(25.881958%, 69.804382%, 36.470032%)" fill-opacity="1" d="M 451.730469 102.582031 L 386.230469 102.582031 L 386.230469 61.867188 L 451.730469 61.867188 Z M 451.730469 102.582031 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 434.027344 132.675781 L 403.929688 132.675781 L 403.929688 102.578125 L 434.027344 102.578125 Z M 434.027344 132.675781 "/> <path fill-rule="nonzero" fill="rgb(0%, 61.569214%, 88.627625%)" fill-opacity="1" d="M 380.5625 132.675781 L 315.066406 132.675781 L 329.921875 61.867188 L 365.710938 61.867188 Z M 380.5625 132.675781 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 329.957031 61.867188 L 315.066406 132.675781 L 347.816406 132.675781 Z M 329.957031 61.867188 "/> <path fill-rule="nonzero" fill="rgb(90.196228%, 52.157593%, 70.196533%)" fill-opacity="1" d="M 470.867188 122.332031 C 457.035156 108.496094 457.035156 86.070312 470.867188 72.238281 C 484.703125 58.410156 507.125 58.410156 520.957031 72.238281 Z M 470.867188 122.332031 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 520.929688 72.210938 C 534.761719 86.046875 534.761719 108.46875 520.929688 122.304688 C 507.09375 136.132812 484.671875 136.132812 470.839844 122.304688 Z M 520.929688 72.210938 "/> </svg><svg class="logo-ko" aria-label="플라토 엑스" role="img" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="192.1 67.9 457.6 95.2"> <path fill-rule="nonzero" fill="rgb(25.881958%, 69.804382%, 36.470032%)" fill-opacity="1" d="M 477.289062 117.320312 C 467.453125 107.488281 467.453125 91.539062 477.289062 81.707031 C 487.125 71.871094 503.070312 71.871094 512.90625 81.707031 Z M 477.289062 117.320312 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 512.886719 81.6875 C 522.722656 91.519531 522.722656 107.464844 512.886719 117.300781 C 503.050781 127.136719 487.105469 127.136719 477.269531 117.300781 Z M 512.886719 81.6875 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 554.421875 159.109375 L 535.339844 159.109375 L 535.339844 144.023438 L 477.269531 144.023438 L 477.269531 127.671875 L 554.421875 127.671875 Z M 554.421875 159.109375 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 516.53125 90.507812 L 521.710938 90.507812 L 521.710938 74.609375 L 536.792969 74.609375 L 536.792969 123.128906 L 521.710938 123.128906 L 521.710938 106.863281 L 516.53125 106.863281 Z M 516.53125 90.507812 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 539.15625 74.609375 L 554.421875 74.609375 L 554.421875 123.128906 L 539.15625 123.128906 Z M 539.15625 74.609375 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 561.203125 130.945312 L 589.363281 130.945312 L 617.527344 74.621094 L 589.363281 74.621094 Z M 561.203125 130.945312 "/> <path fill-rule="nonzero" fill="rgb(90.196228%, 52.157593%, 70.196533%)" fill-opacity="1" d="M 645.6875 130.945312 L 617.527344 130.945312 L 589.363281 74.621094 L 617.527344 74.621094 Z M 645.6875 130.945312 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 561.203125 142.03125 L 645.6875 142.03125 L 645.6875 159.109375 L 561.203125 159.109375 Z M 561.203125 142.03125 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 196.089844 110.605469 L 280.578125 110.605469 L 280.578125 120.929688 L 196.089844 120.929688 Z M 196.089844 110.605469 "/> <path fill-rule="nonzero" fill="rgb(91.764832%, 33.332825%, 25.881958%)" fill-opacity="1" d="M 280.578125 107.320312 L 196.089844 107.320312 L 196.089844 96.175781 L 280.578125 96.175781 Z M 280.578125 107.320312 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 196.089844 137.1875 L 256.648438 137.1875 L 256.648438 133.625 L 196.089844 133.625 L 196.089844 124.21875 L 280.578125 124.21875 L 280.578125 145.589844 L 218.554688 145.589844 L 218.554688 149.152344 L 280.578125 149.152344 L 280.578125 159.109375 L 196.089844 159.109375 Z M 196.089844 137.1875 "/> <path fill-rule="nonzero" fill="rgb(91.764832%, 33.332825%, 25.881958%)" fill-opacity="1" d="M 196.089844 74.621094 L 280.578125 74.621094 L 280.578125 85.765625 L 196.089844 85.765625 Z M 196.089844 74.621094 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 230.433594 96.105469 L 209.582031 96.105469 L 206.445312 85.765625 L 227.300781 85.765625 Z M 230.433594 96.105469 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 246.234375 96.105469 L 267.085938 96.105469 L 270.222656 85.765625 L 249.371094 85.765625 Z M 246.234375 96.105469 "/> <path fill-rule="nonzero" fill="rgb(0%, 61.569214%, 88.627625%)" fill-opacity="1" d="M 463.132812 88.199219 L 463.132812 74.621094 L 378.644531 74.621094 L 378.644531 130.238281 L 463.132812 130.238281 L 463.132812 117.078125 L 395.976562 117.078125 L 395.976562 109.085938 L 463.132812 109.085938 L 463.132812 96.1875 L 395.976562 96.1875 L 395.976562 88.199219 Z M 463.132812 88.199219 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 378.644531 141.664062 L 463.132812 141.664062 L 463.132812 159.109375 L 378.644531 159.109375 Z M 378.644531 141.664062 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 431.355469 141.664062 L 410.421875 141.664062 L 410.421875 130.238281 L 431.355469 130.238281 Z M 431.355469 141.664062 "/> <path fill-rule="nonzero" fill="rgb(98.039246%, 75.294495%, 8.627319%)" fill-opacity="1" d="M 345.164062 159.109375 L 287.367188 159.109375 L 287.367188 107.25 L 318.316406 107.25 L 318.316406 93.070312 L 287.367188 93.070312 L 287.367188 74.621094 L 337.417969 74.621094 L 337.417969 125.507812 L 306.46875 125.507812 L 306.46875 140.65625 L 345.164062 140.65625 Z M 345.164062 159.109375 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 342.59375 74.621094 L 364.445312 74.621094 L 364.445312 105.382812 L 371.855469 105.382812 L 371.855469 123.75 L 364.445312 123.75 L 364.445312 159.109375 L 342.59375 159.109375 Z M 342.59375 74.621094 "/> </svg></div>
+    <p class="eyebrow">도형실력 마스터 · 당첨 조회</p>
+    <h1>당첨 결과 <b>조회</b></h1>
+    <p class="sub">당첨자 발표일은 8월 8일입니다. 응모 시 입력한 이름과 연락처로 당첨 여부를 확인하세요.</p>
+  </div>
+  <div class="body">
+  <div class="card" id="lookupCard">
+    <label>이름<span class="req">*</span></label>
+    <input type="text" id="name" placeholder="응모 시 입력한 이름" autocomplete="name" />
+    <div class="field-err" id="e-name">이름을 입력해 주세요.</div>
+
+    <label>연락처<span class="req">*</span></label>
+    <input type="text" id="phone" placeholder="010-1234-5678" inputmode="numeric" autocomplete="tel" />
+    <div class="field-err" id="e-phone">연락처를 입력해 주세요.</div>
+
+    <div class="notice">
+      📌 <b>이름과 연락처는 당첨자 조회에 반드시 필요한 항목</b>입니다.
+      응모할 때 입력한 것과 동일하게 정확히 입력해 주세요.
+    </div>
+
+    <button class="submit" id="lookupBtn">당첨 확인하기</button>
+  </div>
+  </div>
+
+  <div class="foot">씨투엠에듀 · 플라토 엑스 초성 퀴즈 이벤트</div>
+</div>
+
+<script>
+/* ===== 설정: 본인의 Supabase 값으로 교체 ===== */
+const SUPABASE_URL = "https://unilsdgpzqqfqlwcahkr.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVuaWxzZGdwenFxZnFsd2NhaGtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NjE4MjYsImV4cCI6MjA5NzAzNzgyNn0.wuRACxK33brHPt2wOJJyXmIkSD0p2XxX7zR_nGyuHcg";
+const ANNOUNCE = "2026-08-08T10:00:00+09:00";  // 당첨자 발표 시각 (이전엔 조회 차단)
+/* ============================================ */
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+function hide(id){ $(id).style.display="none"; }
+function show(id){ $(id).style.display="block"; }
+function normPhone(v){ return (v||"").replace(/\D/g,""); }
+const FOOT = `<div class="foot">씨투엠에듀 · 플라토 엑스 초성 퀴즈 이벤트</div>`;
+
+/* 발표 전 접속 시 조회 차단 */
+(function checkAnnounce(){
+  if(new Date() < new Date(ANNOUNCE)){
+    $("app").innerHTML = `
+      <div class="topbar"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="result">
+        <div class="ic lose">📅</div>
+        <h2>아직 발표 전입니다</h2>
+        <p>당첨자 발표는 <b style="color:var(--sky)">8월 8일</b>입니다.
+        발표일 이후 동일한 QR로 다시 접속해 주세요.</p>
+      </div>${FOOT}`;
+  }
+})();
+
+$("lookupBtn").addEventListener("click", async () => {
+  const name = $("name").value.trim();
+  const phoneN = normPhone($("phone").value);
+  hide("e-name"); hide("e-phone");
+  let ok = true;
+  if(!name){ show("e-name"); ok=false; }
+  if(phoneN.length < 9){ show("e-phone"); ok=false; }
+  if(!ok) return;
+
+  const btn = $("lookupBtn");
+  btn.disabled = true; btn.textContent = "조회 중…";
+
+  // 이름+연락처로 매칭 (중복 응모 대비, 당첨건 우선)
+  const { data, error } = await sb.rpc("lookup_result", { p_name: name, p_phone_norm: phoneN });
+
+  btn.disabled = false; btn.textContent = "당첨 확인하기";
+
+  if(error){ alert("조회 중 오류가 발생했습니다.\n"+error.message); return; }
+
+  if(!data || data.length === 0){ renderNone(); return; }
+
+  const winRow = data.find(r => r.is_winner);
+  if(winRow){ renderWin(winRow, phoneN); }
+  else { renderLose(data[0]); }
+});
+
+function renderNone(){
+  $("app").innerHTML = `
+    <div class="topbar"><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="result">
+      <div class="ic none">🔍</div>
+      <h2>응모 내역이 없습니다</h2>
+      <p>입력하신 이름·연락처로 응모 기록을 찾지 못했어요.
+      응모 시 입력한 정보와 동일하게 다시 확인해 주세요.</p>
+    </div>
+    <button class="ghost" onclick="location.reload()">다시 조회하기</button>${FOOT}`;
+}
+
+function renderLose(row){
+  const submitted = row && row.answer ? row.answer : "";
+  $("app").innerHTML = `
+    <div class="topbar"><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="result">
+      <div class="ic lose">🍀</div>
+      <h2>아쉽게 미당첨입니다</h2>
+      <p>이번엔 인연이 닿지 않았어요. 참여해 주셔서 진심으로 감사합니다.
+      다음 이벤트에서 다시 만나요!</p>
+      ${submitted?`<div style="margin-top:18px;background:var(--navy2);border:1px solid var(--line);
+        border-radius:12px;padding:14px 16px;font-size:13px;color:var(--mut)">
+        회원님이 제출하신 답안<br>
+        <b style="color:var(--ink);font-size:16px;display:block;margin-top:4px">${esc(submitted)}</b>
+      </div>`:""}
+    </div>
+    <button class="ghost" onclick="location.reload()">다시 조회하기</button>${FOOT}`;
+}
+function esc(s){ return String(s??"").replace(/[<>&"]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c])); }
+
+function renderWin(row, phoneN){
+  const saved = !!(row.address && row.address.trim());
+  $("app").innerHTML = `
+    <div class="topbar"><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="result">
+      <div class="ic win">🎁</div>
+      <h2>축하합니다, 당첨입니다!</h2>
+      <span class="pill ${row.stage}">플라토 X ${row.stage}단계</span>
+      <p>${row.name}님, 경품 배송을 위해 아래에 받으실 주소를 입력해 주세요.</p>
+    </div>
+    <div class="divider"></div>
+    <div class="card" id="addrCard">
+      <label>받는 분 / 연락처 확인</label>
+      <input type="text" id="recv" value="${row.name}" placeholder="받는 분 이름" />
+      <label>배송지 주소<span class="req">*</span></label>
+      <textarea id="addr" placeholder="도로명 주소, 상세주소, 우편번호까지 정확히 입력해 주세요">${saved?row.address:""}</textarea>
+      <div class="field-err" id="e-addr">배송지 주소를 입력해 주세요.</div>
+      <div class="notice"><b>8월 15일까지</b> 배송지를 입력해 주세요. 기한 내 미입력 시 경품 발송이 어려울 수 있습니다. 제출한 주소는 다시 조회해 수정할 수 있습니다.</div>
+      <button class="submit" id="addrBtn">${saved?"주소 수정하기":"주소 제출하기"}</button>
+      ${saved?`<div class="addr-saved">✓ 이미 주소가 제출되어 있습니다.</div>`:""}
+    </div>${FOOT}`;
+
+  $("addrBtn").addEventListener("click", async () => {
+    const addr = $("addr").value.trim();
+    const recv = $("recv").value.trim();
+    hide("e-addr");
+    if(!addr){ show("e-addr"); return; }
+    const b = $("addrBtn"); b.disabled=true; b.textContent="제출 중…";
+    const full = recv && recv!==row.name ? `[받는분:${recv}] ${addr}` : addr;
+    const { error } = await sb.rpc("save_address", {
+      p_id: row.id, p_name: row.name, p_phone_norm: phoneN, p_address: full });
+    if(error){ b.disabled=false; b.textContent="주소 제출하기"; alert("저장 중 오류가 발생했습니다.\n"+error.message); return; }
+    $("addrCard").innerHTML = `
+      <div class="result" style="padding:20px 0 0">
+        <div class="ic win">✓</div>
+        <h2>주소가 저장되었습니다</h2>
+        <p>입력하신 주소로 경품을 발송해 드릴게요. 감사합니다!</p>
+      </div>`;
+  });
+}
+</script>
+</body>
+</html>

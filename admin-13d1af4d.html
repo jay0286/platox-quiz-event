@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>플라토 X 이벤트 — 관리자</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#f4f6f9; --panel:#ffffff; --panel2:#f4f6f9; --line:#e7e9ee;
+    --ink:#222; --mut:#8a8f99; --lime:#29abe2; --lime-d:#1f95c8;
+    --red:#e84d3d; --yellow:#f5a623; --sky:#29abe2; --green:#3dae4b; --pink:#e867a8;
+    --A:#29abe2; --B:#f5a623; --C:#e867a8; --err:#e84d3d; --ok:#3dae4b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Pretendard',-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+    padding:0 0 60px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .topbar{height:6px;display:flex}
+  .topbar i{flex:1}
+  .topbar i:nth-child(1){background:var(--red)} .topbar i:nth-child(2){background:var(--yellow)}
+  .topbar i:nth-child(3){background:var(--sky)} .topbar i:nth-child(4){background:var(--green)}
+  .topbar i:nth-child(5){background:var(--pink)}
+  .wrap{max-width:1080px;margin:0 auto;padding:24px 18px 0}
+  .logo-svg{height:28px;margin-bottom:14px}
+  h1{font-size:24px;font-weight:800;margin:0 0 4px}
+  h1 b{color:var(--sky)}
+  .sub{color:var(--mut);font-size:13px;margin-bottom:22px}
+  .bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:9px;font-weight:700;transition:.15s}
+  .btn{background:var(--panel);color:var(--ink);border:1px solid var(--line);padding:11px 16px;font-size:14px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .btn:hover{border-color:var(--sky)}
+  .btn.primary{background:var(--sky);color:#fff;border-color:var(--sky)}
+  .btn.primary:hover{background:var(--lime-d)}
+  .btn.danger{color:var(--err);border-color:rgba(232,77,61,.4)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:22px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .stat .n{font-size:28px;font-weight:800}
+  .stat .l{font-size:12px;color:var(--mut);margin-top:2px}
+  .stat.A .n{color:var(--A)} .stat.B .n{color:var(--B)} .stat.C .n{color:var(--C)}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:20px;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+  .panel h2{font-size:15px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+  .panel h2 .tag{font-size:11px;color:var(--mut);font-weight:500}
+  .draw-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .draw-box{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center}
+  .draw-box .s{font-size:20px;font-weight:800}
+  .draw-box.A .s{color:var(--A)} .draw-box.B .s{color:var(--B)} .draw-box.C .s{color:var(--C)}
+  .draw-box .info{font-size:12px;color:var(--mut);margin:6px 0 10px}
+  .winners-tag{font-size:12px;color:var(--ok);font-weight:700}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{color:var(--mut);font-weight:600;font-size:12px;position:sticky;top:0;background:var(--panel);z-index:1}
+  td.win{color:var(--ok);font-weight:700}
+  .tbl-scroll{max-height:460px;overflow:auto;border:1px solid var(--line);border-radius:12px}
+  .stage-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  .sd-A{background:var(--A)} .sd-B{background:var(--B)} .sd-C{background:var(--C)}
+  .src{font-size:11px;padding:2px 7px;border-radius:6px;border:1px solid var(--line);color:var(--mut)}
+  .vchk{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--sky);cursor:pointer}
+  .vchk input{width:16px;height:16px;accent-color:var(--sky);cursor:pointer}
+  .filter{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+  .filter select,.filter input{background:var(--white,#fff);border:1px solid var(--line);color:var(--ink);
+    border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit}
+  .setup{background:#fdecea;border:1px solid #f5c4bd;color:#a03328;
+    border-radius:12px;padding:14px 16px;font-size:13px;margin-bottom:20px}
+  .setup code{background:#fff;border:1px solid #f0d0cb;padding:2px 6px;border-radius:5px}
+  .muted{color:var(--mut);font-size:12px}
+  .dupnote{font-size:12px;color:var(--mut);margin-top:10px}
+  /* 경로 분석 */
+  .src-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:640px){.src-row{grid-template-columns:1fr}}
+  .src-col{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .src-col h3{margin:0 0 4px;font-size:15px;display:flex;align-items:center;gap:7px}
+  .src-col.flyer h3{color:var(--sky)}
+  .src-col.insta h3{color:var(--C)}
+  .src-col .big{font-size:30px;font-weight:800;line-height:1.1}
+  .src-col .pct{font-size:13px;color:var(--mut);margin-left:6px;font-weight:600}
+  .src-metrics{margin-top:12px;display:flex;flex-direction:column;gap:7px}
+  .src-metrics .m{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-top:1px solid var(--line)}
+  .src-metrics .m span:first-child{color:var(--mut)}
+  .src-metrics .m b{font-weight:700}
+  .sharebar{height:9px;border-radius:999px;background:var(--line);overflow:hidden;display:flex;margin:14px 0 4px}
+  .sharebar .seg-f{background:var(--sky)}
+  .sharebar .seg-i{background:var(--C)}
+  .sharebar-lbl{display:flex;justify-content:space-between;font-size:11px;color:var(--mut)}
+  .trend{margin-top:18px}
+  .trend h4{font-size:13px;color:var(--mut);margin:0 0 10px;font-weight:600}
+  .trend-chart{display:flex;align-items:flex-end;gap:3px;height:90px;padding-top:6px}
+  .trend-bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;min-width:0}
+  .trend-bar .b-i{background:var(--C);border-radius:2px 2px 0 0}
+  .trend-bar .b-f{background:var(--sky);border-radius:2px 2px 0 0}
+  .trend-bar .d{font-size:9px;color:#aeb3bd;text-align:center;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .logo-wrap{display:flex;flex-direction:column;gap:5px;align-items:flex-start;margin-bottom:6px}
+  .logo-en{height:26px;width:auto;display:block}
+  .logo-ko{height:18px;width:auto;display:block}
+</style>
+</head>
+<body>
+<div class="topbar"><i></i><i></i><i></i><i></i><i></i></div>
+<div class="wrap">
+  <div class="logo-wrap"><svg class="logo-en" aria-label="PLATO X" role="img" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="168.7 54.4 471.9 85.7"> <path fill-rule="nonzero" fill="rgb(0%, 61.569214%, 88.627625%)" fill-opacity="1" d="M 636.625 133.609375 L 600.285156 133.609375 L 563.945312 60.929688 L 600.285156 60.929688 Z M 636.625 133.609375 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 563.945312 133.609375 L 600.285156 133.609375 L 636.625 60.929688 L 600.285156 60.929688 Z M 563.945312 133.609375 "/> <path fill-rule="nonzero" fill="rgb(92.941284%, 43.136597%, 27.842712%)" fill-opacity="1" d="M 208.144531 132.675781 L 172.738281 132.675781 L 172.738281 61.867188 L 208.144531 61.867188 Z M 208.144531 132.675781 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 208.144531 61.867188 C 224.765625 61.867188 238.238281 75.339844 238.238281 91.960938 C 238.238281 108.582031 224.765625 122.050781 208.144531 122.050781 Z M 208.144531 61.867188 "/> <path fill-rule="nonzero" fill="rgb(98.039246%, 75.294495%, 8.627319%)" fill-opacity="1" d="M 279.308594 132.675781 L 243.902344 132.675781 L 243.902344 61.867188 L 279.308594 61.867188 Z M 279.308594 132.675781 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 309.402344 132.675781 L 279.308594 132.675781 L 279.308594 102.578125 L 309.402344 102.578125 Z M 309.402344 132.675781 "/> <path fill-rule="nonzero" fill="rgb(25.881958%, 69.804382%, 36.470032%)" fill-opacity="1" d="M 451.730469 102.582031 L 386.230469 102.582031 L 386.230469 61.867188 L 451.730469 61.867188 Z M 451.730469 102.582031 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 434.027344 132.675781 L 403.929688 132.675781 L 403.929688 102.578125 L 434.027344 102.578125 Z M 434.027344 132.675781 "/> <path fill-rule="nonzero" fill="rgb(0%, 61.569214%, 88.627625%)" fill-opacity="1" d="M 380.5625 132.675781 L 315.066406 132.675781 L 329.921875 61.867188 L 365.710938 61.867188 Z M 380.5625 132.675781 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 329.957031 61.867188 L 315.066406 132.675781 L 347.816406 132.675781 Z M 329.957031 61.867188 "/> <path fill-rule="nonzero" fill="rgb(90.196228%, 52.157593%, 70.196533%)" fill-opacity="1" d="M 470.867188 122.332031 C 457.035156 108.496094 457.035156 86.070312 470.867188 72.238281 C 484.703125 58.410156 507.125 58.410156 520.957031 72.238281 Z M 470.867188 122.332031 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 520.929688 72.210938 C 534.761719 86.046875 534.761719 108.46875 520.929688 122.304688 C 507.09375 136.132812 484.671875 136.132812 470.839844 122.304688 Z M 520.929688 72.210938 "/> </svg><svg class="logo-ko" aria-label="플라토 엑스" role="img" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="192.1 67.9 457.6 95.2"> <path fill-rule="nonzero" fill="rgb(25.881958%, 69.804382%, 36.470032%)" fill-opacity="1" d="M 477.289062 117.320312 C 467.453125 107.488281 467.453125 91.539062 477.289062 81.707031 C 487.125 71.871094 503.070312 71.871094 512.90625 81.707031 Z M 477.289062 117.320312 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 512.886719 81.6875 C 522.722656 91.519531 522.722656 107.464844 512.886719 117.300781 C 503.050781 127.136719 487.105469 127.136719 477.269531 117.300781 Z M 512.886719 81.6875 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 554.421875 159.109375 L 535.339844 159.109375 L 535.339844 144.023438 L 477.269531 144.023438 L 477.269531 127.671875 L 554.421875 127.671875 Z M 554.421875 159.109375 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 516.53125 90.507812 L 521.710938 90.507812 L 521.710938 74.609375 L 536.792969 74.609375 L 536.792969 123.128906 L 521.710938 123.128906 L 521.710938 106.863281 L 516.53125 106.863281 Z M 516.53125 90.507812 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 539.15625 74.609375 L 554.421875 74.609375 L 554.421875 123.128906 L 539.15625 123.128906 Z M 539.15625 74.609375 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 561.203125 130.945312 L 589.363281 130.945312 L 617.527344 74.621094 L 589.363281 74.621094 Z M 561.203125 130.945312 "/> <path fill-rule="nonzero" fill="rgb(90.196228%, 52.157593%, 70.196533%)" fill-opacity="1" d="M 645.6875 130.945312 L 617.527344 130.945312 L 589.363281 74.621094 L 617.527344 74.621094 Z M 645.6875 130.945312 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 561.203125 142.03125 L 645.6875 142.03125 L 645.6875 159.109375 L 561.203125 159.109375 Z M 561.203125 142.03125 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 196.089844 110.605469 L 280.578125 110.605469 L 280.578125 120.929688 L 196.089844 120.929688 Z M 196.089844 110.605469 "/> <path fill-rule="nonzero" fill="rgb(91.764832%, 33.332825%, 25.881958%)" fill-opacity="1" d="M 280.578125 107.320312 L 196.089844 107.320312 L 196.089844 96.175781 L 280.578125 96.175781 Z M 280.578125 107.320312 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 196.089844 137.1875 L 256.648438 137.1875 L 256.648438 133.625 L 196.089844 133.625 L 196.089844 124.21875 L 280.578125 124.21875 L 280.578125 145.589844 L 218.554688 145.589844 L 218.554688 149.152344 L 280.578125 149.152344 L 280.578125 159.109375 L 196.089844 159.109375 Z M 196.089844 137.1875 "/> <path fill-rule="nonzero" fill="rgb(91.764832%, 33.332825%, 25.881958%)" fill-opacity="1" d="M 196.089844 74.621094 L 280.578125 74.621094 L 280.578125 85.765625 L 196.089844 85.765625 Z M 196.089844 74.621094 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 230.433594 96.105469 L 209.582031 96.105469 L 206.445312 85.765625 L 227.300781 85.765625 Z M 230.433594 96.105469 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 246.234375 96.105469 L 267.085938 96.105469 L 270.222656 85.765625 L 249.371094 85.765625 Z M 246.234375 96.105469 "/> <path fill-rule="nonzero" fill="rgb(0%, 61.569214%, 88.627625%)" fill-opacity="1" d="M 463.132812 88.199219 L 463.132812 74.621094 L 378.644531 74.621094 L 378.644531 130.238281 L 463.132812 130.238281 L 463.132812 117.078125 L 395.976562 117.078125 L 395.976562 109.085938 L 463.132812 109.085938 L 463.132812 96.1875 L 395.976562 96.1875 L 395.976562 88.199219 Z M 463.132812 88.199219 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 378.644531 141.664062 L 463.132812 141.664062 L 463.132812 159.109375 L 378.644531 159.109375 Z M 378.644531 141.664062 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 431.355469 141.664062 L 410.421875 141.664062 L 410.421875 130.238281 L 431.355469 130.238281 Z M 431.355469 141.664062 "/> <path fill-rule="nonzero" fill="rgb(98.039246%, 75.294495%, 8.627319%)" fill-opacity="1" d="M 345.164062 159.109375 L 287.367188 159.109375 L 287.367188 107.25 L 318.316406 107.25 L 318.316406 93.070312 L 287.367188 93.070312 L 287.367188 74.621094 L 337.417969 74.621094 L 337.417969 125.507812 L 306.46875 125.507812 L 306.46875 140.65625 L 345.164062 140.65625 Z M 345.164062 159.109375 "/> <path fill-rule="nonzero" fill="rgb(13.725281%, 9.803772%, 8.627319%)" fill-opacity="1" d="M 342.59375 74.621094 L 364.445312 74.621094 L 364.445312 105.382812 L 371.855469 105.382812 L 371.855469 123.75 L 364.445312 123.75 L 364.445312 159.109375 L 342.59375 159.109375 Z M 342.59375 74.621094 "/> </svg></div>
+  <h1>플라토 엑스 이벤트 <b>관리자</b></h1>
+  <p class="sub">응모 데이터 조회 · 단계별 추첨 · 당첨자 관리</p>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;font-size:12px">
+    <span style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 12px;color:var(--mut)">응모 마감 <b style="color:var(--ink)">7/31</b></span>
+    <span style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 12px;color:var(--mut)">당첨 발표 <b style="color:var(--sky)">8/8</b></span>
+    <span style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 12px;color:var(--mut)">주소 입력 마감 <b style="color:var(--ink)">8/15</b></span>
+    <span style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 12px;color:var(--mut)">발송 마감 <b style="color:var(--ink)">8/18</b></span>
+  </div>
+
+  <div class="setup" id="setupWarn" style="display:none">
+    ⚠️ Supabase 설정이 필요합니다. 이 파일 상단 <code>SUPABASE_URL</code>, <code>SUPABASE_KEY</code>를 본인 값으로 교체하세요.
+  </div>
+
+  <div class="bar">
+    <button class="btn primary" id="reload">↻ 데이터 새로고침</button>
+    <button class="btn" id="exportEntries">전체 응모 CSV</button>
+    <button class="btn" id="exportWinners">당첨자 CSV</button>
+    <button class="btn" id="exportAddr">배송지 CSV</button>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="panel">
+    <h2>📊 유입 경로 분석 <span class="tag">· 전단지 vs 인스타 마케팅 지표 (유효 응모 기준)</span></h2>
+    <div id="sourceAnalysis"></div>
+  </div>
+
+  <div class="panel">
+    <h2>🎲 단계별 추첨 <span class="tag">· 번호 중복 제거 후 단계당 20명 · 1인 1단계 · 검수통과자 2배</span></h2>
+    <p class="muted" style="margin:0 0 14px">
+      같은 연락처가 여러 번/여러 단계에 응모한 경우 <b>가장 마지막 응모 1건만</b> 인정합니다.
+      <b style="color:var(--lime)">검수(V) 통과자</b>는 해당 단계 추첨에서 기회 2배(표 2장)를 받으며, 당첨은 1인 1회입니다.
+      추첨하면 기존 당첨자가 초기화되고 새로 선정됩니다.</p>
+    <div class="draw-grid" id="drawGrid"></div>
+    <div class="bar" style="margin:16px 0 0">
+      <button class="btn primary" id="drawAll">전 단계 추첨 (각 20명)</button>
+      <button class="btn danger" id="resetWin">당첨 초기화</button>
+    </div>
+    <div class="dupnote" id="dupNote"></div>
+  </div>
+
+  <div class="panel">
+    <h2>📋 응모 명단</h2>
+    <div class="filter">
+      <select id="fStage"><option value="">전체 단계</option><option>A</option><option>B</option><option>C</option></select>
+      <select id="fSource"><option value="">전체 경로</option><option value="flyer">전단지</option><option value="insta">인스타</option></select>
+      <select id="fWin"><option value="">전체</option><option value="win">당첨</option><option value="lose">미당첨</option></select>
+      <select id="fCorrect"><option value="">정답 전체</option><option value="ok">정답자</option><option value="no">오답자</option></select>
+      <select id="fVerify"><option value="">검수 전체</option><option value="pending">검수 대기(URL 有)</option><option value="done">검수 완료(V)</option></select>
+      <input type="text" id="fSearch" placeholder="이름/연락처 검색" />
+      <span class="muted" id="rowCount"></span>
+    </div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr>
+          <th>#</th><th>이름</th><th>연락처</th><th>정답</th><th>단계</th>
+          <th>경로</th><th>인스타URL</th><th>검수</th><th>당첨</th><th>배송지</th><th>응모시각</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== 설정: 본인의 Supabase 값으로 교체 ===== */
+const SUPABASE_URL = "https://unilsdgpzqqfqlwcahkr.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVuaWxzZGdwenFxZnFsd2NhaGtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NjE4MjYsImV4cCI6MjA5NzAzNzgyNn0.wuRACxK33brHPt2wOJJyXmIkSD0p2XxX7zR_nGyuHcg";
+let PER_STAGE = 20;               // 단계별 당첨 인원 (로그인 후 event_config와 동기화)
+let CORRECT = "플라토엑스";        // 정답 (로그인 후 event_config와 동기화)
+/* ============================================ */
+
+const $ = id => document.getElementById(id);
+let sb = null, rows = [];
+
+if(SUPABASE_URL.includes("여기에")){ $("setupWarn").style.display="block"; }
+else { sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
+
+function normPhone(v){ return (v||"").replace(/\D/g,""); }
+/* 채점: 공백 제거 후 정확히 "플라토엑스"와 일치해야 정답 */
+function isCorrect(r){ return (r.answer||"").replace(/\s/g,"") === CORRECT; }
+
+/* 번호 기준 dedupe: 같은 phone_norm은 가장 마지막(created_at 최신) 1건만 */
+function dedupe(list){
+  const sorted = [...list].sort((a,b)=> new Date(b.created_at)-new Date(a.created_at));
+  const seen = new Set(); const out = [];
+  for(const r of sorted){
+    if(seen.has(r.phone_norm)) continue;
+    seen.add(r.phone_norm); out.push(r);
+  }
+  return out; // 1인 1건(가장 최근 응모, 그때 고른 단계 적용)
+}
+
+async function load(){
+  if(!sb) return;
+  $("reload").textContent = "불러오는 중…";
+  const { data, error } = await sb.from("entries").select("*").order("created_at",{ascending:false});
+  $("reload").textContent = "↻ 데이터 새로고침";
+  if(error){ alert("불러오기 오류\n"+error.message); return; }
+  rows = data || [];
+  render();
+}
+
+function render(){ renderStats(); renderSourceAnalysis(); renderDraw(); renderTable(); }
+
+function renderStats(){
+  const total = rows.length;
+  const uniq = dedupe(rows);
+  const byStage = s => uniq.filter(r=>r.stage===s).length;
+  const winners = rows.filter(r=>r.is_winner).length;
+  const addrDone = rows.filter(r=>r.is_winner && r.address && r.address.trim()).length;
+  const pendingV = uniq.filter(r=>r.insta_url && !r.verified).length;
+  const doneV = uniq.filter(r=>r.verified).length;
+  const correctN = uniq.filter(r=>isCorrect(r)).length;
+  $("stats").innerHTML = `
+    <div class="stat"><div class="n">${total}</div><div class="l">총 응모 (중복 포함)</div></div>
+    <div class="stat"><div class="n">${uniq.length}</div><div class="l">유효 응모 (1인 1건)</div></div>
+    <div class="stat"><div class="n" style="color:var(--ok)">${correctN}</div><div class="l">정답자 (추첨 대상)</div></div>
+    <div class="stat A"><div class="n">${byStage('A')}</div><div class="l">A단계 유효응모</div></div>
+    <div class="stat B"><div class="n">${byStage('B')}</div><div class="l">B단계 유효응모</div></div>
+    <div class="stat C"><div class="n">${byStage('C')}</div><div class="l">C단계 유효응모</div></div>
+    <div class="stat"><div class="n" style="color:var(--lime)">${doneV}</div><div class="l">검수 완료 (대기 ${pendingV})</div></div>
+    <div class="stat"><div class="n" style="color:var(--ok)">${winners}</div><div class="l">당첨자 (주소제출 ${addrDone})</div></div>`;
+}
+
+/* 유입 경로 분석 — 유효 응모(1인 1건) 기준 */
+function renderSourceAnalysis(){
+  const uniq = dedupe(rows);
+  const flyer = uniq.filter(r=>r.source==="flyer");
+  const insta = uniq.filter(r=>r.source==="insta");
+  const total = uniq.length || 1;
+  const fPct = Math.round(flyer.length/total*100);
+  const iPct = 100 - fPct;
+
+  // 경로별 지표 계산
+  function metrics(list){
+    const n = list.length || 0;
+    const correct = list.filter(isCorrect).length;
+    const cRate = n ? Math.round(correct/n*100) : 0;
+    const stage = s => list.filter(r=>r.stage===s).length;
+    const shared = list.filter(r=>r.insta_url).length;     // 게시물 공유(URL 제출)
+    const sRate = n ? Math.round(shared/n*100) : 0;
+    return {n, correct, cRate, A:stage('A'), B:stage('B'), C:stage('C'), shared, sRate};
+  }
+  const F = metrics(flyer), I = metrics(insta);
+
+  // 일자별 유입 추이 (응모일 기준, 경로 누적막대)
+  const byDay = {};
+  uniq.forEach(r=>{
+    const d = new Date(r.created_at);
+    const key = `${d.getMonth()+1}/${d.getDate()}`;
+    if(!byDay[key]) byDay[key] = {f:0,i:0};
+    if(r.source==="flyer") byDay[key].f++; else byDay[key].i++;
+  });
+  const days = Object.keys(byDay).sort((a,b)=>{
+    const [am,ad]=a.split('/').map(Number), [bm,bd]=b.split('/').map(Number);
+    return am-bm || ad-bd;
+  });
+  const maxDay = Math.max(1, ...days.map(k=>byDay[k].f+byDay[k].i));
+
+  $("sourceAnalysis").innerHTML = `
+    <div class="sharebar">
+      <div class="seg-f" style="width:${fPct}%"></div>
+      <div class="seg-i" style="width:${iPct}%"></div>
+    </div>
+    <div class="sharebar-lbl"><span>전단지 ${fPct}%</span><span>인스타 ${iPct}%</span></div>
+
+    <div class="src-row" style="margin-top:16px">
+      <div class="src-col flyer">
+        <h3>📄 전단지</h3>
+        <div class="big">${F.n}<span class="pct">명</span></div>
+        <div class="src-metrics">
+          <div class="m"><span>정답률</span><b>${F.cRate}% <span class="muted">(${F.correct}명)</span></b></div>
+          <div class="m"><span>단계 선호</span><b>A ${F.A} · B ${F.B} · C ${F.C}</b></div>
+          <div class="m"><span>인스타 공유</span><b>${F.sRate}% <span class="muted">(${F.shared}명)</span></b></div>
+        </div>
+      </div>
+      <div class="src-col insta">
+        <h3>📷 인스타그램</h3>
+        <div class="big">${I.n}<span class="pct">명</span></div>
+        <div class="src-metrics">
+          <div class="m"><span>정답률</span><b>${I.cRate}% <span class="muted">(${I.correct}명)</span></b></div>
+          <div class="m"><span>단계 선호</span><b>A ${I.A} · B ${I.B} · C ${I.C}</b></div>
+          <div class="m"><span>게시물 공유</span><b>${I.sRate}% <span class="muted">(${I.shared}명)</span></b></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="trend">
+      <h4>일자별 유입 추이 <span style="color:var(--sky)">■</span> 전단지 <span style="color:var(--C)">■</span> 인스타</h4>
+      ${days.length ? `<div class="trend-chart">
+        ${days.map(k=>{
+          const f=byDay[k].f, i=byDay[k].i;
+          const fh=Math.round(f/maxDay*80), ih=Math.round(i/maxDay*80);
+          return `<div class="trend-bar" title="${k} · 전단지 ${f} / 인스타 ${i}">
+            <div class="b-i" style="height:${ih}px"></div>
+            <div class="b-f" style="height:${fh}px"></div>
+            <div class="d">${k}</div>
+          </div>`;
+        }).join("")}
+      </div>` : `<div class="muted" style="font-size:13px">아직 응모 데이터가 없습니다.</div>`}
+    </div>`;
+}
+
+function renderDraw(){
+  const uniq = dedupe(rows);
+  $("drawGrid").innerHTML = ["A","B","C"].map(s=>{
+    const stagePool = uniq.filter(r=>r.stage===s);
+    const correctPool = stagePool.filter(r=>isCorrect(r)).length;
+    const won = rows.filter(r=>r.is_winner && r.stage===s).length;
+    return `<div class="draw-box ${s}">
+      <div class="s">${s}단계</div>
+      <div class="info">정답자 ${correctPool}명 / 응모 ${stagePool.length}명<br>당첨 정원 ${PER_STAGE}명</div>
+      <div class="winners-tag">${won>0?`✓ ${won}명 선정됨`:"미추첨"}</div>
+    </div>`;
+  }).join("");
+}
+
+/* 추첨 로직(번호 중복제거 · 정답자 필터 · 검수 2배 가중 · 단계당 정원)은
+   무결성/원자성을 위해 서버 run_draw() RPC로 이전됨. */
+
+async function drawAll(){
+  if(!sb) return;
+  if(!confirm("전 단계를 새로 추첨합니다. 기존 당첨자는 초기화됩니다. 진행할까요?")) return;
+  // 서버 run_draw() RPC: 중복제거 → 정답자 풀 → 검수 2배 가중 추첨 → 단계당 정원, 단일 트랜잭션
+  const { data, error } = await sb.rpc("run_draw");
+  if(error){ alert("추첨 오류\n"+error.message); return; }
+  const total = (data||[]).reduce((s,r)=>s+(r.r_winners||0),0);
+  $("dupNote").innerHTML = `✓ 추첨 완료 — 총 ${total}명 선정 (각 단계 최대 ${PER_STAGE}명, 검수 통과자 추첨 기회 2배).`;
+  await load();
+}
+
+async function resetWin(){
+  if(!sb) return;
+  if(!confirm("모든 당첨 상태를 초기화합니다. 진행할까요?")) return;
+  const { error } = await sb.rpc("reset_winners");
+  if(error){ alert("초기화 오류\n"+error.message); return; }
+  await load();
+}
+
+function renderTable(){
+  const fS=$("fStage").value, fSrc=$("fSource").value, fW=$("fWin").value, fC=$("fCorrect").value, fV=$("fVerify").value, q=$("fSearch").value.trim().toLowerCase();
+  let list = rows.filter(r=>{
+    if(fS && r.stage!==fS) return false;
+    if(fSrc && r.source!==fSrc) return false;
+    if(fW==="win" && !r.is_winner) return false;
+    if(fW==="lose" && r.is_winner) return false;
+    if(fC==="ok" && !isCorrect(r)) return false;
+    if(fC==="no" && isCorrect(r)) return false;
+    if(fV==="pending" && !(r.insta_url && !r.verified)) return false;
+    if(fV==="done" && !r.verified) return false;
+    if(q && !((r.name||"").toLowerCase().includes(q) || (r.phone||"").includes(q))) return false;
+    return true;
+  });
+  $("rowCount").textContent = `${list.length}건 표시`;
+  $("tbody").innerHTML = list.map((r,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td>${esc(r.name)}</td>
+      <td>${esc(r.phone)}</td>
+      <td>${esc(r.answer)} ${isCorrect(r)?'<span style="color:var(--ok);font-weight:700">O</span>':'<span style="color:var(--err);font-weight:700">X</span>'}</td>
+      <td><span class="stage-dot sd-${r.stage}"></span>${r.stage}</td>
+      <td><span class="src">${r.source==='flyer'?'전단지':'인스타'}</span></td>
+      <td>${r.insta_url?`<a href="${esc(r.insta_url)}" target="_blank" style="color:var(--lime)">링크</a>`:'-'}</td>
+      <td>${r.insta_url
+          ? `<label class="vchk"><input type="checkbox" data-vid="${r.id}" ${r.verified?'checked':''}> V</label>`
+          : '<span class="muted">-</span>'}</td>
+      <td class="${r.is_winner?'win':''}">${r.is_winner?'당첨':'-'}</td>
+      <td>${r.address?'✓ 제출':'-'}</td>
+      <td class="muted">${fmt(r.created_at)}</td>
+    </tr>`).join("");
+  // 검수 체크박스 이벤트 바인딩
+  $("tbody").querySelectorAll("input[data-vid]").forEach(cb=>{
+    cb.addEventListener("change", async e=>{
+      const id = Number(e.target.dataset.vid);
+      const val = e.target.checked;
+      const row = rows.find(r=>r.id===id);
+      if(row) row.verified = val;             // 로컬 즉시 반영
+      const { error } = await sb.from("entries").update({ verified: val }).eq("id", id);
+      if(error){ alert("검수 저장 오류\n"+error.message); e.target.checked=!val; if(row) row.verified=!val; return; }
+      renderStats(); renderDraw();            // 통계·풀 갱신
+    });
+  });
+}
+
+function esc(s){ return String(s??"").replace(/[<>&"]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c])); }
+function fmt(t){ if(!t) return "-"; const d=new Date(t); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
+
+function toCSV(list, cols){
+  const head = cols.map(c=>c.h).join(",");
+  const body = list.map(r=>cols.map(c=>`"${String(c.v(r)??"").replace(/"/g,'""')}"`).join(",")).join("\n");
+  return "\uFEFF"+head+"\n"+body;
+}
+function download(name, csv){
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; a.click();
+}
+
+$("exportEntries").onclick=()=>download("응모전체.csv", toCSV(rows,[
+  {h:"이름",v:r=>r.name},{h:"연락처",v:r=>r.phone},{h:"정답",v:r=>r.answer},
+  {h:"단계",v:r=>r.stage},{h:"경로",v:r=>r.source},{h:"인스타URL",v:r=>r.insta_url},
+  {h:"당첨",v:r=>r.is_winner?"당첨":""},{h:"응모시각",v:r=>r.created_at}]));
+$("exportWinners").onclick=()=>download("당첨자.csv", toCSV(rows.filter(r=>r.is_winner),[
+  {h:"이름",v:r=>r.name},{h:"연락처",v:r=>r.phone},{h:"단계",v:r=>r.stage},
+  {h:"경로",v:r=>r.source},{h:"배송지",v:r=>r.address},{h:"주소제출시각",v:r=>r.addr_done_at}]));
+$("exportAddr").onclick=()=>download("배송지.csv", toCSV(rows.filter(r=>r.is_winner&&r.address),[
+  {h:"이름",v:r=>r.name},{h:"연락처",v:r=>r.phone},{h:"주소",v:r=>r.address},
+  {h:"플라토X단계",v:r=>r.stage+"단계"}]));
+
+$("reload").onclick=load;
+$("drawAll").onclick=drawAll;
+$("resetWin").onclick=resetWin;
+["fStage","fSource","fWin","fCorrect","fVerify"].forEach(id=>$(id).onchange=renderTable);
+$("fSearch").oninput=renderTable;
+
+/* ===== 관리자 인증 게이트 (Supabase Auth) ===== */
+async function loadConfig(){
+  // 로그인 후 정답/정원을 event_config(서버 단일 출처)와 동기화
+  const { data } = await sb.from("event_config").select("correct_answer,per_stage").eq("id",1).single();
+  if(data){
+    if(data.correct_answer) CORRECT = data.correct_answer.replace(/\s/g,"");
+    if(data.per_stage)      PER_STAGE = data.per_stage;
+  }
+}
+async function doLogin(){
+  const email=$("adminEmail").value.trim(), pw=$("adminPw").value;
+  const b=$("loginBtn"); b.disabled=true; b.textContent="로그인 중…";
+  const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+  b.disabled=false; b.textContent="로그인";
+  if(error){ $("loginErr").textContent="로그인 실패: "+error.message; return; }
+  $("loginGate")?.remove();
+  await loadConfig(); await load();
+}
+function showLogin(){
+  document.body.insertAdjacentHTML("beforeend", `
+    <div id="loginGate" style="position:fixed;inset:0;background:rgba(20,24,31,.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px">
+      <div style="background:#fff;border-radius:16px;padding:26px;max-width:340px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.2)">
+        <h2 style="margin:0 0 4px;font-size:18px">관리자 로그인</h2>
+        <p style="margin:0 0 16px;color:var(--mut);font-size:13px">플라토 엑스 이벤트 관리자 전용</p>
+        <input id="adminEmail" type="text" placeholder="이메일" autocomplete="username"
+          style="width:100%;padding:12px;border:1px solid var(--line);border-radius:9px;font-size:14px;margin-bottom:10px" />
+        <input id="adminPw" type="password" placeholder="비밀번호" autocomplete="current-password"
+          style="width:100%;padding:12px;border:1px solid var(--line);border-radius:9px;font-size:14px" />
+        <div id="loginErr" style="color:var(--err);font-size:12px;min-height:18px;margin:6px 0 8px"></div>
+        <button id="loginBtn" class="btn primary" style="width:100%;padding:12px">로그인</button>
+      </div>
+    </div>`);
+  $("loginBtn").onclick=doLogin;
+  $("adminPw").addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); });
+}
+async function initAdmin(){
+  if(!sb) return;  // Supabase 미설정 시 setup 경고만 노출
+  const { data:{ session } } = await sb.auth.getSession();
+  if(!session){ showLogin(); return; }
+  await loadConfig(); await load();
+}
+initAdmin();
+</script>
+</body>
+</html>
