@@ -218,6 +218,16 @@ $("closePolicy").onclick = () => $("policyModal").classList.remove("on");
 function hide(id){ $(id).style.display="none"; }
 function show(id){ $(id).style.display="block"; }
 function normPhone(v){ return (v||"").replace(/\D/g,""); }
+/* 인스타 URL 정규화: 스킴(https://)이 없으면 인스타 도메인을 자동 부착.
+   아이디만 입력하면 프로필 URL로, p/·reel/ 경로만 입력하면 게시물 URL로 저장 */
+function instaUrl(v){
+  v=(v||"").trim();
+  if(!v) return null;
+  if(/^https?:\/\//i.test(v)) return v;
+  v=v.replace(/^\/+/,"");
+  if(/^((www\.|m\.)?instagram\.com|instagr\.am)\//i.test(v)) return "https://"+v;
+  return "https://www.instagram.com/"+v.replace(/^@+/,"");
+}
 
 $("submitBtn").addEventListener("click", async () => {
   if(new Date() > new Date(DEADLINE)){
@@ -244,7 +254,7 @@ $("submitBtn").addEventListener("click", async () => {
   const { error } = await sb.rpc("submit_entry", {
     p_name: name, p_phone: phone, p_phone_norm: phoneN, p_answer: answer,
     p_stage: selectedStage, p_source: SOURCE,
-    p_insta_url: $("instaUrl").value.trim() || null
+    p_insta_url: instaUrl($("instaUrl").value)
   });
 
   if(error){

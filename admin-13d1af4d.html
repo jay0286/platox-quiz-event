@@ -364,7 +364,7 @@ function renderTable(){
       <td>${esc(r.answer)} ${isCorrect(r)?'<span style="color:var(--ok);font-weight:700">O</span>':'<span style="color:var(--err);font-weight:700">X</span>'}</td>
       <td><span class="stage-dot sd-${r.stage}"></span>${r.stage}</td>
       <td><span class="src">${r.source==='flyer'?'전단지':'인스타'}</span></td>
-      <td>${r.insta_url?`<a href="${esc(r.insta_url)}" target="_blank" style="color:var(--lime)">링크</a>`:'-'}</td>
+      <td>${r.insta_url?`<a href="${esc(instaUrl(r.insta_url))}" target="_blank" style="color:var(--lime)">링크</a>`:'-'}</td>
       <td>${r.insta_url
           ? `<label class="vchk"><input type="checkbox" data-vid="${r.id}" ${r.verified?'checked':''}> V</label>`
           : '<span class="muted">-</span>'}</td>
@@ -387,6 +387,15 @@ function renderTable(){
 }
 
 function esc(s){ return String(s??"").replace(/[<>&"]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c])); }
+/* 인스타 URL 정규화: 스킴 없으면 인스타 도메인 자동 부착(아이디/경로만 저장된 값도 정상 링크로 표시) */
+function instaUrl(v){
+  v=(v||"").trim();
+  if(!v) return null;
+  if(/^https?:\/\//i.test(v)) return v;
+  v=v.replace(/^\/+/,"");
+  if(/^((www\.|m\.)?instagram\.com|instagr\.am)\//i.test(v)) return "https://"+v;
+  return "https://www.instagram.com/"+v.replace(/^@+/,"");
+}
 function fmt(t){ if(!t) return "-"; const d=new Date(t); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
 
 function toCSV(list, cols){
@@ -401,7 +410,7 @@ function download(name, csv){
 
 $("exportEntries").onclick=()=>download("응모전체.csv", toCSV(rows,[
   {h:"이름",v:r=>r.name},{h:"연락처",v:r=>r.phone},{h:"정답",v:r=>r.answer},
-  {h:"단계",v:r=>r.stage},{h:"경로",v:r=>r.source},{h:"인스타URL",v:r=>r.insta_url},
+  {h:"단계",v:r=>r.stage},{h:"경로",v:r=>r.source},{h:"인스타URL",v:r=>instaUrl(r.insta_url)},
   {h:"당첨",v:r=>r.is_winner?"당첨":""},{h:"응모시각",v:r=>r.created_at}]));
 $("exportWinners").onclick=()=>download("당첨자.csv", toCSV(rows.filter(r=>r.is_winner),[
   {h:"이름",v:r=>r.name},{h:"연락처",v:r=>r.phone},{h:"단계",v:r=>r.stage},
