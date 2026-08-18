@@ -114,6 +114,7 @@ const SUPABASE_URL = "https://unilsdgpzqqfqlwcahkr.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVuaWxzZGdwenFxZnFsd2NhaGtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NjE4MjYsImV4cCI6MjA5NzAzNzgyNn0.wuRACxK33brHPt2wOJJyXmIkSD0p2XxX7zR_nGyuHcg";
 const ANNOUNCE = "2026-08-08T10:00:00+09:00";  // 당첨자 발표 시각 (이전엔 조회 차단)
 const ADDR_DEADLINE = "2026-08-15T23:59:59+09:00";  // 배송지 입력 마감 (이후 입력칸 대신 안내)
+const EVENT_END     = "2026-08-18T00:00:00+09:00";  // 이벤트 종료 (이후 조회 자체를 차단)
 /* ============================================ */
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -123,21 +124,36 @@ function show(id){ $(id).style.display="block"; }
 function normPhone(v){ return (v||"").replace(/\D/g,""); }
 const FOOT = `<div class="foot">씨투엠에듀 · 플라토 엑스 초성 퀴즈 이벤트</div>`;
 
-/* 발표 전 접속 시 조회 차단 */
-(function checkAnnounce(){
-  if(new Date() < new Date(ANNOUNCE)){
+/* 접속 게이트: 종료 후 → 조회 차단 / 발표 전 → 조회 차단 */
+const GATED = (function gate(){
+  const now = new Date();
+  if(now > new Date(EVENT_END)){
     $("app").innerHTML = `
       <div class="topbar"><i></i><i></i><i></i><i></i><i></i></div>
       <div class="result">
-        <div class="ic lose">📅</div>
+        <div class="ic none">\ud83c\udf89</div>
+        <h2>이벤트가 종료되었습니다</h2>
+        <p>플라토 엑스 초성 퀴즈 이벤트의 당첨자 발표와 배송지 접수가
+        모두 마감되었습니다. 참여해 주셔서 진심으로 감사합니다.</p>
+        <p style="margin-top:14px">문의: <b>씨투엠에듀</b></p>
+      </div>${FOOT}`;
+    return true;
+  }
+  if(now < new Date(ANNOUNCE)){
+    $("app").innerHTML = `
+      <div class="topbar"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="result">
+        <div class="ic lose">\ud83d\udcc5</div>
         <h2>아직 발표 전입니다</h2>
         <p>당첨자 발표는 <b style="color:var(--sky)">8월 8일</b>입니다.
         발표일 이후 동일한 QR로 다시 접속해 주세요.</p>
       </div>${FOOT}`;
+    return true;
   }
+  return false;
 })();
 
-$("lookupBtn").addEventListener("click", async () => {
+if(!GATED) $("lookupBtn").addEventListener("click", async () => {
   const name = $("name").value.trim();
   const phoneN = normPhone($("phone").value);
   hide("e-name"); hide("e-phone");
